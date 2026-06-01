@@ -66,7 +66,7 @@ export const ScriptHeader: React.FC<ScriptHeaderProps> = ({
           />
           {/* Folder Path Title Segment */}
           <h1 className="text-xs font-semibold tracking-wider text-gray-400 uppercase hidden sm:block">
-            GEOMETRIC_BALANCE / <span className="text-black font-bold tracking-tight">{script.title || "ROTEIRO"}</span> {script.treatment && <span className="text-blue-600 bg-blue-50 border border-blue-100 text-[9px] font-bold px-1.5 py-0.5 rounded ml-1 tracking-normal">{script.treatment.toUpperCase()}</span>}
+            <span className="text-black font-bold tracking-tight">{script.title || "ROTEIRO"}</span> {script.treatment && <span className="text-blue-600 bg-blue-50 border border-blue-100 text-[9px] font-bold px-1.5 py-0.5 rounded ml-1 tracking-normal">{script.treatment.toUpperCase()}</span>}
           </h1>
           <h1 className="text-xs font-bold text-black sm:hidden">
             {script.title || "ROTEIRO"} {script.treatment && `(${script.treatment})`}
