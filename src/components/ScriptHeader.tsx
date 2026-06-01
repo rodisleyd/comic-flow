@@ -59,9 +59,11 @@ export const ScriptHeader: React.FC<ScriptHeaderProps> = ({
       <div className="h-14 bg-white border-b border-gray-150 flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
           {/* Logo Unit */}
-          <div className="w-8 h-8 bg-black rounded-xs flex items-center justify-center text-white font-bold text-xs italic tracking-widest">
-            INK
-          </div>
+          <img
+            src="/logo-tipo.png"
+            alt="Comic Flow Logo"
+            className="w-8 h-8 object-contain rounded-xs"
+          />
           {/* Folder Path Title Segment */}
           <h1 className="text-xs font-semibold tracking-wider text-gray-400 uppercase hidden sm:block">
             GEOMETRIC_BALANCE / <span className="text-black font-bold tracking-tight">{script.title || "ROTEIRO"}</span> {script.treatment && <span className="text-blue-600 bg-blue-50 border border-blue-100 text-[9px] font-bold px-1.5 py-0.5 rounded ml-1 tracking-normal">{script.treatment.toUpperCase()}</span>}
