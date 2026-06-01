@@ -451,13 +451,12 @@ export default function App() {
     });
   }, []);
 
-  // Adicionar uma nova página vazia no fim do roteiro
-  const handleAddPage = useCallback(() => {
+  // Inserir uma nova página vazia em determinada posição (índice)
+  const handleInsertPage = useCallback((insertIndex?: number) => {
     setScript(prev => {
-      const nextNumber = prev.pages.length + 1;
       const newPage: Page = {
         id: `page-${generateId()}`,
-        number: nextNumber,
+        number: 0, // será recalculado sequencialmente
         panels: [
           {
             id: `panel-${generateId()}`,
@@ -468,13 +467,29 @@ export default function App() {
           }
         ]
       };
+      
+      const updatedPages = [...prev.pages];
+      const targetIndex = insertIndex !== undefined ? insertIndex : updatedPages.length;
+      updatedPages.splice(targetIndex, 0, newPage);
+      
+      // Reordenar os números de páginas sequencialmente
+      const reorderedPages = updatedPages.map((p, idx) => ({
+        ...p,
+        number: idx + 1
+      }));
+      
       return {
         ...prev,
-        pages: [...prev.pages, newPage],
+        pages: reorderedPages,
         updatedAt: new Date().toISOString()
       };
     });
-  }, []);
+  }, [generateId]);
+
+  // Adicionar uma nova página vazia no fim do roteiro
+  const handleAddPage = useCallback(() => {
+    handleInsertPage();
+  }, [handleInsertPage]);
 
   // Excluir uma página inteira
   const handleDeletePage = useCallback((pageId: string) => {
@@ -1071,13 +1086,22 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* Quick helper to append panel at the bottom of the page */}
-                  <div className="p-3 bg-slate-50/50 border-t border-gray-100 flex justify-center">
+                  {/* Quick helper to append panel or page at the bottom of the page */}
+                  <div className="p-3 bg-slate-50/50 border-t border-gray-100 flex justify-center gap-3">
+                    <button
+                      onClick={() => handleInsertPage(pIdx + 1)}
+                      className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-bold py-1.5 px-4 rounded-md hover:bg-red-50 transition-colors cursor-pointer border border-red-150 bg-white shadow-2xs"
+                      title={`Inserir uma nova página após a Página ${page.number}`}
+                    >
+                      <Plus className="w-4 h-4 text-red-500" />
+                      <span>Inserir Página {page.number + 1}</span>
+                    </button>
+
                     <button
                       onClick={() => handleInsertPanel(page.id, page.panels.length)}
-                      className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-bold py-1.5 px-4 rounded-md hover:bg-indigo-50 transition-colors"
+                      className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-bold py-1.5 px-4 rounded-md hover:bg-indigo-50 transition-colors cursor-pointer border border-indigo-150 bg-white shadow-2xs"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-4 h-4 text-indigo-500" />
                       <span>Inserir Painel {page.panels.length + 1}</span>
                     </button>
                   </div>
