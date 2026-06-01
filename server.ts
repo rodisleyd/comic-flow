@@ -1,12 +1,10 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const pdf = require("pdf-parse");
 
 dotenv.config();
 
@@ -23,6 +21,7 @@ app.post("/api/pdf/parse", express.raw({ type: "application/pdf", limit: "15mb" 
       return res.status(400).json({ error: "Carregamento vazio. Envie o buffer binário do PDF no corpo da requisição." });
     }
 
+    const pdf = require("pdf-parse");
     const parsedData = await pdf(buffer);
     return res.json({ text: parsedData.text || "" });
   } catch (err: any) {
@@ -243,6 +242,7 @@ Sinopse/Parâmetros: ${scriptContext?.description || ""}
 // Configure Vite integration as middleware or compile path serving
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
