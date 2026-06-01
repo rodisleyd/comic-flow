@@ -62,7 +62,7 @@ export const ScriptHeader: React.FC<ScriptHeaderProps> = ({
           <img
             src="/logo-tipo.png"
             alt="Comic Flow Logo"
-            className="w-8 h-8 object-contain rounded-xs"
+            className="h-9 w-auto object-contain rounded-xs"
           />
           {/* Folder Path Title Segment */}
           <h1 className="text-xs font-semibold tracking-wider text-gray-400 uppercase hidden sm:block">
