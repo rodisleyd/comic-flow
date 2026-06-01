@@ -2,9 +2,6 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
 
 dotenv.config();
 
@@ -21,7 +18,9 @@ app.post("/api/pdf/parse", express.raw({ type: "application/pdf", limit: "15mb" 
       return res.status(400).json({ error: "Carregamento vazio. Envie o buffer binário do PDF no corpo da requisição." });
     }
 
-    const pdf = require("pdf-parse");
+    const pdfModule = await import("pdf-parse");
+    // @ts-ignore
+    const pdf = pdfModule.default || pdfModule;
     const parsedData = await pdf(buffer);
     return res.json({ text: parsedData.text || "" });
   } catch (err: any) {
