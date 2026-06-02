@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ComicScript, Page, Panel } from './types.ts';
 import { initialScript } from './initialData.ts';
 import { ScriptHeader } from './components/ScriptHeader.tsx';
@@ -76,6 +76,12 @@ export default function App() {
     return null;
   });
 
+  // Ref para evitar stale closures ao alternar o roteiro ativo
+  const activeScriptIdRef = useRef<string | null>(activeScriptId);
+  useEffect(() => {
+    activeScriptIdRef.current = activeScriptId;
+  }, [activeScriptId]);
+
   // Roteiro ativo derivado
   const script = useMemo(() => {
     return scripts.find(s => s.id === activeScriptId) || scripts[0] || initialScript;
@@ -84,8 +90,9 @@ export default function App() {
   // Função setScript compatível que atualiza o roteiro ativo na lista
   const setScript = useCallback((update: ComicScript | ((prev: ComicScript) => ComicScript)) => {
     setScripts(prevScripts => {
+      const currentActiveId = activeScriptIdRef.current;
       return prevScripts.map(s => {
-        if (s.id !== activeScriptId) return s;
+        if (s.id !== currentActiveId) return s;
         const nextScript = typeof update === 'function' ? update(s) : update;
         return {
           ...nextScript,
@@ -93,7 +100,7 @@ export default function App() {
         };
       });
     });
-  }, [activeScriptId]);
+  }, []);
 
   // Estado que controla a tab ativa (Editor de 3 colunas vs Visualização de Texto Screenplay vs Argumento & Decupagem)
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'argumento'>('editor');
