@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ComicScript, Page, Panel } from './types.ts';
 import { initialScript } from './initialData.ts';
 import { ScriptHeader } from './components/ScriptHeader.tsx';
 import { PanelRow } from './components/PanelRow.tsx';
 import { TraditionalPreview } from './components/TraditionalPreview.tsx';
 import { ArgumentoView } from './components/ArgumentoView.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
 import { Eye, BookOpen, AlertCircle, HelpCircle, ChevronRight, Plus, Trash2, Sparkles, Check, Copy, RotateCcw, Loader2, FileText, Focus } from 'lucide-react';
 
 export default function App() {
@@ -27,43 +28,75 @@ export default function App() {
    * O estado do roteiro é persistido de forma transparente no navegador do 
    * usuário sempre que ocorrem alterações.
    * ========================================================================= */
-  const [script, setScript] = useState<ComicScript>(() => {
-    const saved = localStorage.getItem('hq_script_data');
-    if (saved) {
+  // Lista com todos os roteiros
+  const [scripts, setScripts] = useState<ComicScript[]>(() => {
+    const savedList = localStorage.getItem('hq_scripts_list');
+    if (savedList) {
       try {
-        return JSON.parse(saved);
+        return JSON.parse(savedList);
       } catch (e) {
-        console.error("Falha ao recuperar dados salvos, carregando exemplo original.", e);
+        console.error("Falha ao recuperar lista de roteiros.", e);
       }
     }
-    return initialScript;
+    
+    // Migração: se houver um único roteiro salvo anteriormente
+    const singleSaved = localStorage.getItem('hq_script_data');
+    if (singleSaved) {
+      try {
+        const parsedSingle = JSON.parse(singleSaved);
+        if (parsedSingle && parsedSingle.id) {
+          return [parsedSingle];
+        }
+      } catch (e) {
+        console.error("Falha na migração do roteiro antigo.", e);
+      }
+    }
+    
+    return [initialScript];
   });
+
+  // ID do roteiro ativo. Se null, o Dashboard é exibido.
+  const [activeScriptId, setActiveScriptId] = useState<string | null>(() => {
+    const savedActiveId = localStorage.getItem('hq_active_script_id');
+    if (savedActiveId && savedActiveId !== 'null') {
+      return savedActiveId;
+    }
+    
+    // Se migramos o roteiro único, definimos ele como ativo
+    const singleSaved = localStorage.getItem('hq_script_data');
+    if (singleSaved) {
+      try {
+        const parsedSingle = JSON.parse(singleSaved);
+        if (parsedSingle && parsedSingle.id) {
+          return parsedSingle.id;
+        }
+      } catch {}
+    }
+    
+    return null;
+  });
+
+  // Roteiro ativo derivado
+  const script = useMemo(() => {
+    return scripts.find(s => s.id === activeScriptId) || scripts[0] || initialScript;
+  }, [scripts, activeScriptId]);
+
+  // Função setScript compatível que atualiza o roteiro ativo na lista
+  const setScript = useCallback((update: ComicScript | ((prev: ComicScript) => ComicScript)) => {
+    setScripts(prevScripts => {
+      return prevScripts.map(s => {
+        if (s.id !== activeScriptId) return s;
+        const nextScript = typeof update === 'function' ? update(s) : update;
+        return {
+          ...nextScript,
+          id: s.id // Garante estabilidade de ID
+        };
+      });
+    });
+  }, [activeScriptId]);
 
   // Estado que controla a tab ativa (Editor de 3 colunas vs Visualização de Texto Screenplay vs Argumento & Decupagem)
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'argumento'>('editor');
-  
-  // Estados de Argumentação e Planejamento de Beats em Páginas
-  const [argument, setArgument] = useState<string>(() => {
-    return localStorage.getItem('hq_argument_data') || '';
-  });
-  const [pageCount, setPageCount] = useState<number>(() => {
-    const saved = localStorage.getItem('hq_page_count_data');
-    return saved ? parseInt(saved, 10) : 8;
-  });
-  const [beats, setBeats] = useState<{ pageNumber: number; description: string }[]>(() => {
-    const saved = localStorage.getItem('hq_beats_data');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Falha ao recuperar beats salvos no LocalStorage.", e);
-      }
-    }
-    return [];
-  });
-  const [beatsSummary, setBeatsSummary] = useState<string>(() => {
-    return localStorage.getItem('hq_beats_summary_data') || '';
-  });
 
   // Estado para exibir dicas de formatação rápida na barra lateral
   const [showTips, setShowTips] = useState<boolean>(true);
@@ -274,24 +307,18 @@ export default function App() {
 
   // Sincroniza as alterações de estado no LocalStorage
   useEffect(() => {
-    localStorage.setItem('hq_script_data', JSON.stringify(script));
-  }, [script]);
+    localStorage.setItem('hq_scripts_list', JSON.stringify(scripts));
+  }, [scripts]);
 
   useEffect(() => {
-    localStorage.setItem('hq_argument_data', argument);
-  }, [argument]);
+    localStorage.setItem('hq_active_script_id', activeScriptId || 'null');
+  }, [activeScriptId]);
 
   useEffect(() => {
-    localStorage.setItem('hq_page_count_data', pageCount.toString());
-  }, [pageCount]);
-
-  useEffect(() => {
-    localStorage.setItem('hq_beats_data', JSON.stringify(beats));
-  }, [beats]);
-
-  useEffect(() => {
-    localStorage.setItem('hq_beats_summary_data', beatsSummary);
-  }, [beatsSummary]);
+    if (activeScriptId) {
+      localStorage.setItem('hq_script_data', JSON.stringify(script));
+    }
+  }, [script, activeScriptId]);
 
   useEffect(() => {
     localStorage.setItem('hq_focus_mode', focusMode ? 'true' : 'false');
@@ -386,16 +413,77 @@ export default function App() {
     }));
   }, []);
 
+  // Callbacks de Navegação e Edição do Dashboard
+  const handleSelectScript = useCallback((id: string) => {
+    setActiveScriptId(id);
+  }, []);
+
+  const handleCreateNewScriptFromDashboard = useCallback(() => {
+    const newId = `script-${generateId()}`;
+    const newBlank: ComicScript = {
+      id: newId,
+      title: "Novo Roteiro de HQ",
+      author: "Roteirista",
+      treatment: "1º Tratamento",
+      description: "Uma breve descrição ou sinopse da cena...",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      pages: [
+        {
+          id: `page-${generateId()}`,
+          number: 1,
+          panels: [
+            {
+              id: `panel-${generateId()}`,
+              number: 1,
+              action: "**ENQUADRAMENTO:** Plano Geral - Dia. Descreva a ação visual e enquadramento aqui...",
+              dialogues: "PERSONAGEM 1\nDigite o diálogo aqui...",
+              captions: "LEGENDA:\nLocalização ou efeito."
+            }
+          ]
+        }
+      ]
+    };
+    setScripts(prev => [...prev, newBlank]);
+    setActiveScriptId(newId);
+  }, [generateId]);
+
+  const handleDeleteScript = useCallback((id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const targetScript = scripts.find(s => s.id === id);
+    const title = targetScript ? targetScript.title : "este roteiro";
+    
+    triggerConfirm({
+      title: "Excluir Roteiro",
+      message: `Tem certeza que deseja excluir permanentemente "${title}"? Esta ação não poderá ser desfeita.`,
+      confirmText: "Sim, Excluir",
+      variant: "danger",
+      onConfirm: () => {
+        setScripts(prev => {
+          const filtered = prev.filter(s => s.id !== id);
+          if (filtered.length === 0) {
+            return [initialScript];
+          }
+          return filtered;
+        });
+        if (activeScriptId === id) {
+          setActiveScriptId(null);
+        }
+      }
+    });
+  }, [scripts, activeScriptId, triggerConfirm]);
+
   // Criar um roteiro totalmente novo e em branco
   const handleCreateNewBlank = useCallback(() => {
     triggerConfirm({
       title: "Criar Novo Roteiro",
-      message: "Deseja criar um roteiro limpo em branco? Suas alterações salvas localmente neste roteiro anterior serão perdidas ou substituídas.",
-      confirmText: "Sim, Criar em Branco",
+      message: "Deseja criar um novo roteiro em branco? Você poderá alternar entre seus roteiros a qualquer momento.",
+      confirmText: "Sim, Criar Novo",
       variant: "success",
       onConfirm: () => {
+        const newId = `script-${generateId()}`;
         const newBlank: ComicScript = {
-          id: `script-${generateId()}`,
+          id: newId,
           title: "Novo Roteiro de HQ",
           author: "Roteirista",
           treatment: "1º Tratamento",
@@ -418,7 +506,8 @@ export default function App() {
             }
           ]
         };
-        setScript(newBlank);
+        setScripts(prev => [...prev, newBlank]);
+        setActiveScriptId(newId);
       }
     });
   }, [triggerConfirm, generateId]);
@@ -758,19 +847,31 @@ export default function App() {
   };
 
   return (
-    <div id="hq-script-app-root" className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans transition-colors duration-200">
-      {/* Dynamic Header Component */}
-      {!focusMode && (
-        <ScriptHeader
-          script={script}
-          onUpdateMetadata={handleUpdateMetadata}
-          onExportJSON={handleExportJSON}
-          onImportJSON={handleImportJSON}
-          onReset={handleReset}
-          onNewScript={handleCreateNewBlank}
-          onAddPage={handleAddPage}
+    <div id="hq-script-app-root" className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+      activeScriptId === null ? 'bg-[#0B0F19] text-white' : 'bg-slate-50 text-slate-800'
+    }`}>
+      {activeScriptId === null ? (
+        <Dashboard
+          scripts={scripts}
+          onSelectScript={handleSelectScript}
+          onCreateNewScript={handleCreateNewScriptFromDashboard}
+          onDeleteScript={handleDeleteScript}
         />
-      )}
+      ) : (
+        <>
+          {/* Dynamic Header Component */}
+          {!focusMode && (
+            <ScriptHeader
+              script={script}
+              onUpdateMetadata={handleUpdateMetadata}
+              onExportJSON={handleExportJSON}
+              onImportJSON={handleImportJSON}
+              onReset={handleReset}
+              onNewScript={handleCreateNewBlank}
+              onAddPage={handleAddPage}
+              onBackToDashboard={() => setActiveScriptId(null)}
+            />
+          )}
 
       {/* Focus Mode Sticky Immersive Header */}
       {focusMode && activeTab === 'editor' && (
@@ -1121,14 +1222,14 @@ export default function App() {
             </div>
           ) : activeTab === 'argumento' ? (
             <ArgumentoView
-              argument={argument}
-              onChangeArgument={setArgument}
-              pageCount={pageCount}
-              onChangePageCount={setPageCount}
-              beats={beats}
-              onChangeBeats={setBeats}
-              beatsSummary={beatsSummary}
-              onChangeSummary={setBeatsSummary}
+              argument={script.argument || ''}
+              onChangeArgument={(val) => setScript(prev => ({ ...prev, argument: val }))}
+              pageCount={script.pageCount || 8}
+              onChangePageCount={(val) => setScript(prev => ({ ...prev, pageCount: val }))}
+              beats={script.beats || []}
+              onChangeBeats={(val) => setScript(prev => ({ ...prev, beats: val }))}
+              beatsSummary={script.beatsSummary || ''}
+              onChangeSummary={(val) => setScript(prev => ({ ...prev, beatsSummary: val }))}
               onApplyBeatsToScript={handleApplyBeatsToScript}
               triggerAlert={triggerAlert}
               triggerConfirm={triggerConfirm}
@@ -1432,6 +1533,8 @@ export default function App() {
           <span className="text-white hidden sm:inline">v1.1.2_M=4</span>
         </div>
       </footer>
+        </>
+      )}
 
       {/* Custom Confirmation Modal (Geometric Balance Theme) */}
       {confirmModal.isOpen && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ComicScript } from '../types.ts';
-import { RefreshCw, Download, Upload, Plus, User, Edit3, FilePlus } from 'lucide-react';
+import { RefreshCw, Download, Upload, Plus, User, Edit3, FilePlus, Home } from 'lucide-react';
 import { exportScriptToPDF } from '../utils/pdfGenerator.ts';
 
 interface ScriptHeaderProps {
@@ -11,6 +11,7 @@ interface ScriptHeaderProps {
   onReset: () => void;
   onNewScript: () => void;
   onAddPage: () => void;
+  onBackToDashboard: () => void;
 }
 
 export const ScriptHeader: React.FC<ScriptHeaderProps> = ({
@@ -21,6 +22,7 @@ export const ScriptHeader: React.FC<ScriptHeaderProps> = ({
   onReset,
   onNewScript,
   onAddPage,
+  onBackToDashboard,
 }) => {
   const [isEditingMeta, setIsEditingMeta] = useState(false);
   const [importText, setImportText] = useState('');
@@ -177,6 +179,15 @@ export const ScriptHeader: React.FC<ScriptHeaderProps> = ({
 
         {/* Right Side: Command button array in Geometric Balance style */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <button
+            onClick={onBackToDashboard}
+            className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-sm transition-colors uppercase tracking-wider shadow-sm transition-all hover:shadow-md cursor-pointer"
+            title="Voltar para a tela inicial (Meus Roteiros)"
+          >
+            <Home className="w-3.5 h-3.5 text-slate-300" />
+            <span>Meus Roteiros</span>
+          </button>
+
           <button
             onClick={onNewScript}
             className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-sm transition-colors uppercase tracking-wider shadow-sm transition-all hover:shadow-md"

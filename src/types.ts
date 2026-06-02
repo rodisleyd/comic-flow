@@ -26,4 +26,8 @@ export interface ComicScript {
   createdAt: string;
   updatedAt: string;
   pages: Page[];
+  argument?: string;
+  pageCount?: number;
+  beats?: { pageNumber: number; description: string }[];
+  beatsSummary?: string;
 }
