@@ -132,6 +132,16 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<'tips' | 'ai'>('tips');
+
+  // Guardar o texto original de um painel antes de aplicar a melhoria da IA (para desfazer)
+  const [lastOriginalValue, setLastOriginalValue] = useState<{
+    pageId: string;
+    panelId: string;
+    field: 'action' | 'dialogues' | 'captions';
+    value: string;
+    panelNumber: number;
+    pageNumber: number;
+  } | null>(null);
   
   const [copied, setCopied] = useState(false);
   const handleCopyText = useCallback((text: string) => {
@@ -283,6 +293,16 @@ export default function App() {
   const handleApplyAiSuggestion = useCallback(() => {
     if (!aiSelection || !aiResult) return;
 
+    // Guarda o texto anterior caso o usuário precise recuperar
+    setLastOriginalValue({
+      pageId: aiSelection.pageId,
+      panelId: aiSelection.panelId,
+      field: aiSelection.field,
+      value: aiSelection.originalValue,
+      panelNumber: aiSelection.panelNumber,
+      pageNumber: aiSelection.pageNumber
+    });
+
     setScript(prev => {
       const updatedPages = prev.pages.map(page => {
         if (page.id !== aiSelection.pageId) return page;
@@ -322,6 +342,39 @@ export default function App() {
     setAiResult(null);
     setSidebarTab('tips');
   }, [aiSelection, aiResult, triggerConfirm]);
+
+  const handleUndoLastAiImprovement = useCallback(() => {
+    if (!lastOriginalValue) return;
+
+    setScript(prev => {
+      const updatedPages = prev.pages.map(page => {
+        if (page.id !== lastOriginalValue.pageId) return page;
+
+        const updatedPanels = page.panels.map(panel => {
+          if (panel.id !== lastOriginalValue.panelId) return panel;
+
+          return {
+            ...panel,
+            [lastOriginalValue.field]: lastOriginalValue.value
+          };
+        });
+
+        return {
+          ...page,
+          panels: updatedPanels
+        };
+      });
+
+      return {
+        ...prev,
+        pages: updatedPages,
+        updatedAt: new Date().toISOString()
+      };
+    });
+
+    triggerAlert("Restaurado!", "O seu texto original foi recuperado com sucesso.");
+    setLastOriginalValue(null);
+  }, [lastOriginalValue, setScript, triggerAlert]);
 
   // Sincroniza as alterações de estado no LocalStorage
   useEffect(() => {
@@ -478,11 +531,7 @@ export default function App() {
       variant: "danger",
       onConfirm: () => {
         setScripts(prev => {
-          const filtered = prev.filter(s => s.id !== id);
-          if (filtered.length === 0) {
-            return [initialScript];
-          }
-          return filtered;
+          return prev.filter(s => s.id !== id);
         });
         if (activeScriptId === id) {
           setActiveScriptId(null);
@@ -1380,6 +1429,25 @@ export default function App() {
                     <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                       O assistente vai melhorar ritmo, linguagem e corrigir ortografia sem descaracterizar a sua voz original!
                     </p>
+
+                    {lastOriginalValue && (
+                      <div className="mt-5 pt-4 border-t border-slate-100 w-full text-left">
+                        <span className="text-[9px] uppercase font-mono font-bold text-indigo-500 tracking-wider">Ação Recente</span>
+                        <div className="mt-2 p-2.5 bg-indigo-50/50 border border-indigo-100/50 rounded-lg text-xs flex flex-col gap-2">
+                          <p className="text-[10px] text-slate-500 leading-relaxed">
+                            Você aplicou uma sugestão da IA no <strong>Painel {lastOriginalValue.panelNumber}</strong> (Pág. {lastOriginalValue.pageNumber}) substituindo o campo <strong>{lastOriginalValue.field === 'action' ? 'Ação' : lastOriginalValue.field === 'dialogues' ? 'Diálogo' : 'Legenda'}</strong>.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleUndoLastAiImprovement}
+                            className="w-full py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg text-[10px] uppercase transition-all shadow-2xs hover:border-indigo-300 hover:text-indigo-700 flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>Desfazer & Restaurar Original</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   // Active review mode
