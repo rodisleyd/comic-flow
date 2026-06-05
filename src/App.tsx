@@ -237,6 +237,17 @@ export default function App() {
     setShowTips(true);
     setSidebarTab('ai');
 
+    // Rolar suavemente até o assistente de IA em telas menores para melhor usabilidade
+    setTimeout(() => {
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile) {
+        const el = document.getElementById('ai-sidebar');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }, 100);
+
     try {
       const response = await fetch("/api/ai/improve", {
         method: "POST",
@@ -1249,7 +1260,7 @@ export default function App() {
 
         {/* Sidebar Help Guide & Instruction System */}
         {showTips && activeTab === 'editor' && !focusMode && (
-          <aside className="w-full lg:w-80 shrink-0 space-y-4">
+          <aside id="ai-sidebar" className="w-full lg:w-80 shrink-0 space-y-4 lg:sticky lg:top-[136px] lg:self-start">
             
             {/* Header com Abas da Barra Lateral */}
             <div className="flex bg-slate-100 p-1 rounded-lg gap-1 border border-slate-200/50">
